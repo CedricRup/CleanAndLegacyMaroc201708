@@ -6,12 +6,12 @@ using System.Text;
 
 namespace Lags
 {
-    class LagsService
+    public class LagsService
     {
-        List<Ordre> ListOrdre = new List<Ordre>();
+        protected List<Ordre> ListOrdre = new List<Ordre>();
 
         // lit le fihier des ordres et calcule le CA
-        public void getFichierOrder(String fileName)
+        public virtual void getFichierOrder(String fileName)
         {
             try
             {
@@ -126,12 +126,13 @@ namespace Lags
 
 
 
-        internal void CalculerLeCA(bool debug)
+        public double CalculerLeCA(bool debug)
         {
             Console.WriteLine("CALCUL CA..");
             ListOrdre = ListOrdre.OrderBy(ordre => ordre.debut).ToList();
             double ca = CA(ListOrdre, debug);
             Console.WriteLine("CA: {0,10:N2}", ca);
+            return ca;
         }
 
     }
