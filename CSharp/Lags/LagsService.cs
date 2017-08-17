@@ -2,137 +2,153 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Lags
 {
     public class LagsService
     {
-        protected List<Ordre> ListOrdre = new List<Ordre>();
+        public const string NOM_FICHER = "ordres.csv";
+        protected List<Ordre> ordres = new List<Ordre>();
+        private IConsole console = new ConsoleImplementation();
 
-        // lit le fihier des ordres et calcule le CA
-        public virtual void getFichierOrder(String fileName)
+        public LagsService(IConsole console)
+        {
+            this.console = console;
+        }
+
+        public LagsService()
+        {
+        }
+
+        public virtual void chargerOuCreerFichierOrdres(String nomFichier)
         {
             try
             {
-                using (var reader = new StreamReader(fileName))
-                {
-                    while (!reader.EndOfStream)
-                    {
-                        var champs = reader.ReadLine().Split(';');
-                        String chp1 = champs[0];
-                        int chp2 = Int32.Parse(champs[1]);
-                        int champ3 = Int32.Parse(champs[2]);
-                        double chp4 = Double.Parse(champs[3]);
-                        Ordre ordre = new Ordre(chp1, chp2, champ3, chp4);
-                        ListOrdre.Add(ordre);
-                    }
-                }
+                chargerFichierOrdres(nomFichier);
             }
             catch (FileNotFoundException e)
             {
-                Console.WriteLine("FICHIER ORDRES.CSV NON TROUVE. CREATION FICHIER.");
-                WriteOrdres(fileName);
+                creerFichier(nomFichier);
             }
         }
-        // écrit le fichier des ordres
-        void WriteOrdres(String nomFich)
+
+        private void chargerFichierOrdres(string nomFichier)
         {
-            using (TextWriter writer = File.CreateText(nomFich))
+            using (var reader = new StreamReader(nomFichier))
             {
-                foreach (Ordre ordre in ListOrdre)
+                while (!reader.EndOfStream)
                 {
-                    string[] ligneCSV = new string[4];
-                    ligneCSV[0] = ordre.id;
-                    ligneCSV[1] = ordre.debut.ToString();
-                    ligneCSV[2] = ordre.duree.ToString();
-                    ligneCSV[3] = ordre.prix.ToString();
-                    writer.WriteLine(string.Join(";", ligneCSV));
+                    var champs = reader.ReadLine().Split(';');
+                    chargerOrdre(champs);
                 }
             }
         }
 
+        private void chargerOrdre(string[] champs)
+        {
+            String id = champs[0];
+            int debut = Int32.Parse(champs[1]);
+            int duree = Int32.Parse(champs[2]);
+            double prix = Double.Parse(champs[3]);
+            Ordre ordre = new Ordre(id, debut, duree, prix);
+            ordres.Add(ordre);
+        }
 
-        // affiche la liste des ordres
-        public void Liste()
+        void creerFichier(String nomFichier)
+        {
+            Console.WriteLine("FICHIER ORDRES.CSV NON TROUVE. CREATION FICHIER.");
+            using (TextWriter writer = File.CreateText(nomFichier))
+            {
+                foreach (Ordre ordre in ordres)
+                {
+                    insererOrdre(ordre, writer);
+                }
+            }
+        }
+
+        private static void insererOrdre(Ordre ordre, TextWriter writer)
+        {
+            var ligne = creerLigne(ordre);
+            writer.WriteLine(ligne);
+        }
+
+        private static string creerLigne(Ordre ordre)
+        {
+            var ligne = string.Format("{0};{1};{2};{3}", ordre.id, ordre.debut, ordre.duree, ordre.prix);
+            return ligne;
+        }
+
+        public void listerOrdres()
+        {
+            afficherEntete();
+            ordres = ordres.OrderBy(ordre => ordre.debut).ToList();
+            ordres.ForEach(afficherOrdre);
+            afficherBordure();
+        }
+
+        private static void afficherBordure()
+        {
+            Console.WriteLine("{0,-8} {1:0000000} {2:00000} {3,10:N2}",
+                "--------", "-------", "-----", "----------");
+        }
+
+        private static void afficherEntete()
         {
             Console.WriteLine("LISTE DES ORDRES");
             Console.WriteLine("{0,-8} {1,7} {2,5} {3,10}",
                 "ID", "DEBUT", "DUREE", "PRIX");
-            Console.WriteLine("{0,-8} {1:0000000} {2:00000} {3,10:N2}",
-               "--------", "-------", "-----", "----------");
-            ListOrdre = ListOrdre.OrderBy(ordre => ordre.debut).ToList();
-            ListOrdre.ForEach(AfficherOrdre);
-            Console.WriteLine("{0,-8} {1:0000000} {2:00000} {3,10:N2}",
-               "--------", "-------", "-----", "----------");
+            afficherBordure();
         }
 
-        public void AfficherOrdre(Ordre ordre)
+        public void afficherOrdre(Ordre ordre)
         {
             Console.WriteLine("{0,-8} {1:0000000} {2:00000} {3,10:N2}",
                 ordre.id, ordre.debut, ordre.duree, ordre.prix);
 
         }
-        // Ajoute un ordre; le CA est recalculé en conséquence
-        public void AjouterOrdre()
+
+        public void ajouterOrdre()
         {
             Console.WriteLine("AJOUTER UN ORDRE");
             Console.WriteLine("FORMAT = ID;DEBUT;FIN;PRIX");
-            String line = Console.ReadLine().ToUpper();
-            var champs = line.Split(';');
-            String id = champs[0];
-            int dep = Int32.Parse(champs[1]);
-            int dur = Int32.Parse(champs[2]);
-            double prx = Double.Parse(champs[3]);
-            Ordre ordre = new Ordre(id, dep, dur, prx);
-            ListOrdre.Add(ordre);
-            WriteOrdres("ordres.csv");
+            String saisieOrdre = console.lireSaisieOrdre().ToUpper();
+            chargerOrdre(saisieOrdre.Split(';'));
+            creerFichier(NOM_FICHER);
         }
 
-        //public void CalculerLeCA()
-        //{
-        //    Console.WriteLine("CALCUL CA..");
-        //    laListe = laListe.OrderBy(ordre => ordre.debut).ToList();
-        //    double ca = CA(laListe);
-        //    Console.WriteLine("CA: {0,10:N2}", ca);
-        //}
-
-        private double CA(List<Ordre> ordres, bool debug)
+        private double calculerChiffreAffaire(List<Ordre> ordres, bool debug)
         {
-            // si aucun ordre, job done, TROLOLOLO..
             if (ordres.Count() == 0)
                 return 0.0;
-            Ordre order = ordres.ElementAt(0);
+            Ordre premierOrdre = ordres.ElementAt(0);
             // attention ne marche pas pour les ordres qui depassent la fin de l'année 
             // voir ticket PLAF nO 4807 
-            List<Ordre> liste = ordres.Where(ordre => ordre.debut >= order.debut + order.duree).ToList();
-            List<Ordre> liste2 = ordres.GetRange(1, ordres.Count() - 1);
-            double ca = order.prix + CA(liste, debug);
-            // Lapin compris?
-            double ca2 = CA(liste2, debug);
-            Console.Write(debug ? String.Format("{0,10:N2}\n", Math.Max(ca, ca2)):".");
-            return Math.Max(ca, ca2); // LOL
+            List<Ordre> ordresQuiCommencentApresLaFinDuPremierOrdre = ordres
+                .Where(ordre => ordre.debut >= premierOrdre.debut + premierOrdre.duree).ToList();
+            List<Ordre> ordresSaufPremier = ordres.GetRange(1, ordres.Count() - 1);
+            double chiffreAffaireIncluantPremierOrdre = premierOrdre.prix + calculerChiffreAffaire(ordresQuiCommencentApresLaFinDuPremierOrdre, debug);
+
+            double chiffreAffaireSaufPremierOrdre = calculerChiffreAffaire(ordresSaufPremier, debug);
+            Console.Write(debug ? String.Format("{0,10:N2}\n", Math.Max(chiffreAffaireIncluantPremierOrdre, chiffreAffaireSaufPremierOrdre)):".");
+            return Math.Max(chiffreAffaireIncluantPremierOrdre, chiffreAffaireSaufPremierOrdre); // LOL
         }
 
-        // MAJ du fichier
-        public void Suppression()
+        public void supprimerOrdre()
         {
             Console.WriteLine("SUPPRIMER UN ORDRE");
             Console.Write("ID:");
             string id = Console.ReadLine().ToUpper();
-            this.ListOrdre = ListOrdre.Where(ordre => ordre.id != id).ToList();
-            WriteOrdres("ORDRES.CSV");
+            this.ordres = ordres.Where(ordre => ordre.id != id).ToList();
+            creerFichier(NOM_FICHER);
         }
 
-
-
-        public double CalculerLeCA(bool debug)
+        public double calculerLeChiffreAffaire(bool debug)
         {
             Console.WriteLine("CALCUL CA..");
-            ListOrdre = ListOrdre.OrderBy(ordre => ordre.debut).ToList();
-            double ca = CA(ListOrdre, debug);
-            Console.WriteLine("CA: {0,10:N2}", ca);
-            return ca;
+            ordres = ordres.OrderBy(ordre => ordre.debut).ToList();
+            double chiffreAffaire = calculerChiffreAffaire(ordres, debug);
+            Console.WriteLine("CA: {0,10:N2}", chiffreAffaire);
+            return chiffreAffaire;
         }
 
     }

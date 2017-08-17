@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Lags
 {
@@ -16,14 +12,13 @@ namespace Lags
             this.prix = prix;
         }
 
-        // getters et setters
-        //id de l'ordre 
+        
         public string id { get; set; }
-        // debut
+        
         public int debut { get; set; }
-        // duree
+
         public int duree { get; set; }
-        // valeur
+
         public double prix { get; set; }
 
     }
